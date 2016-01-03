@@ -7,14 +7,24 @@ import (
 	"time"
 )
 
-type instrumentingMiddleware struct {
+func instrumentingMiddleware(
+	requestCount metrics.Counter,
+	requestLatency metrics.TimeHistogram,
+	countResult metrics.Histogram,
+) ServiceMiddleware {
+	return func(next decoder.Service) decoder.Service {
+		return instrmw{requestCount, requestLatency, countResult, next}
+	}
+}
+
+type instrmw struct {
 	requestCount   metrics.Counter
 	requestLatency metrics.TimeHistogram
 	countResult    metrics.Histogram
 	decoder.Service
 }
 
-func (mw instrumentingMiddleware) Decode(req *decoder.Request) (rep *decoder.Response, err error) {
+func (mw instrmw) Decode(req *decoder.Request) (rep *decoder.Response, err error) {
 	defer func(begin time.Time) {
 		methodField := metrics.Field{Key: "method", Value: "decode"}
 		errorField := metrics.Field{Key: "error", Value: fmt.Sprintf("%v", err)}

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/metrics"
 	kitprometheus "github.com/go-kit/kit/metrics/prometheus"
@@ -14,8 +15,16 @@ import (
 )
 
 func main() {
-	ctx := context.Background()
+	var (
+		listen = flag.String("listen", ":8080", "HTTP listen address")
+		proxy  = flag.String("proxy", "", "Optional comma-separated list of URLs to proxy decode results")
+	)
+	flag.Parse()
+
 	logger := log.NewLogfmtLogger(os.Stderr)
+	logger = log.NewContext(logger).With("listen", *listen).With("caller", log.DefaultCaller)
+
+	ctx := context.Background()
 
 	fieldKeys := []string{"method", "error"}
 	requestCount := kitprometheus.NewCounter(stdprometheus.CounterOpts{
@@ -39,8 +48,9 @@ func main() {
 
 	var svc decoder.Service
 	svc = decoder.ShareLinkService{}
-	svc = loggingMiddleware{logger, svc}
-	svc = instrumentingMiddleware{requestCount, requestLatency, countResult, svc}
+	svc = proxyingMiddleware(*proxy, ctx, logger)(svc)
+	svc = loggingMiddleware(logger)(svc)
+	svc = instrumentingMiddleware(requestCount, requestLatency, countResult)(svc)
 
 	decodeHandler := httptransport.NewServer(
 		ctx,
@@ -51,6 +61,6 @@ func main() {
 
 	http.Handle("/decode", decodeHandler)
 	http.Handle("/metrics", stdprometheus.Handler())
-	_ = logger.Log("msg", "HTTP", "addr", ":8080")
-	_ = logger.Log("err", http.ListenAndServe(":8080", nil))
+	_ = logger.Log("msg", "HTTP", "addr", *listen)
+	_ = logger.Log("err", http.ListenAndServe(*listen, nil))
 }

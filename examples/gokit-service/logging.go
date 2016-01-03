@@ -7,12 +7,18 @@ import (
 	"time"
 )
 
-type loggingMiddleware struct {
+func loggingMiddleware(logger log.Logger) ServiceMiddleware {
+	return func(next decoder.Service) decoder.Service {
+		return logmw{logger, next}
+	}
+}
+
+type logmw struct {
 	logger log.Logger
 	decoder.Service
 }
 
-func (mw loggingMiddleware) Decode(req *decoder.Request) (rep *decoder.Response, err error) {
+func (mw logmw) Decode(req *decoder.Request) (rep *decoder.Response, err error) {
 	defer func(begin time.Time) {
 		var out string
 		if rep != nil {
