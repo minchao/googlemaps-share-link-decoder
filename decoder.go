@@ -46,16 +46,19 @@ func (ShareLinkService) Decode(req *Request) (*Response, error) {
 		if len(tmp) == 0 {
 			return nil, errors.New("requested JSON data not found")
 		}
-		var data [][]json.RawMessage
-		json.Unmarshal([]byte(tmp[0][1]), &data)
-		if len(data[8]) < 13 {
+
+		// Parse JSON data
+		var data []json.RawMessage
+		err = json.Unmarshal([]byte(tmp[0][1]), &data)
+		if err != nil || len(data[8]) < 13 {
 			return nil, errors.New("wrong JSON data format")
 		}
-
-		// Parse JSON
-
+		json.Unmarshal(data[8], &data)
+		if err != nil {
+			return nil, errors.New("wrong JSON data format")
+		}
 		var locations []json.RawMessage
-		err = json.Unmarshal(data[8][0], &locations)
+		err = json.Unmarshal(data[0], &locations)
 		if err != nil {
 			return nil, errors.New("location data not found")
 		}
@@ -64,11 +67,11 @@ func (ShareLinkService) Decode(req *Request) (*Response, error) {
 			return nil, errors.New("location data not found")
 		}
 		// address
-		json.Unmarshal(data[8][13], &address)
+		json.Unmarshal(data[13], &address)
 		// phone
-		json.Unmarshal(data[8][7], &phone)
+		json.Unmarshal(data[7], &phone)
 		// name
-		json.Unmarshal(data[8][1], &name)
+		json.Unmarshal(data[1], &name)
 	}
 
 	result := Response{
