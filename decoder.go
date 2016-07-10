@@ -48,30 +48,32 @@ func (ShareLinkService) Decode(req *Request) (*Response, error) {
 		}
 
 		// Parse JSON data
-		var data []json.RawMessage
+		var data, place, locations []json.RawMessage
 		err = json.Unmarshal([]byte(tmp[0][1]), &data)
-		if err != nil || len(data[8]) < 13 {
+		if err != nil || len(data) < 55 {
 			return nil, errors.New("wrong JSON data format")
 		}
-		json.Unmarshal(data[8], &data)
-		if err != nil {
-			return nil, errors.New("wrong JSON data format")
+		if string(data[8]) == "null" {
+			return nil, errors.New("place data not found")
 		}
-		var locations []json.RawMessage
-		err = json.Unmarshal(data[0], &locations)
-		if err != nil {
+		json.Unmarshal(data[8], &place)
+		if len(place) < 14 {
+			return nil, errors.New("place data not found")
+		}
+		if string(place[0]) == "null" {
 			return nil, errors.New("location data not found")
 		}
+		json.Unmarshal(place[0], &locations)
 		err = json.Unmarshal(locations[2], &latLngArr)
 		if err != nil {
-			return nil, errors.New("location data not found")
+			return nil, errors.New("incorrect coordinate format")
 		}
 		// address
-		json.Unmarshal(data[13], &address)
+		json.Unmarshal(place[13], &address)
 		// phone
-		json.Unmarshal(data[7], &phone)
+		json.Unmarshal(place[7], &phone)
 		// name
-		json.Unmarshal(data[1], &name)
+		json.Unmarshal(place[1], &name)
 	}
 
 	result := Response{
